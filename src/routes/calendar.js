@@ -51,17 +51,21 @@ const mockEvents = [
 // Get events for next 7 days
 router.get('/week', async (req, res) => {
   try {
-    // Try to use gog if available
-    try {
-      const output = execSync('gog calendar list --days 7 --format json 2>/dev/null', { encoding: 'utf8' });
-      const events = JSON.parse(output);
-      res.json(events);
-    } catch {
-      // Fallback to mock data
-      res.json(mockEvents);
-    }
+    const output = execSync('gog calendar events --days 7 --json -j --results-only', { encoding: 'utf8' });
+    const events = JSON.parse(output);
+    const formatted = events.map(e => ({
+      id: e.id,
+      title: e.summary || '(no title)',
+      start: e.start?.dateTime || e.start?.date || '',
+      end: e.end?.dateTime || e.end?.date || '',
+      description: e.description || '',
+      location: e.location || '',
+      attendees: e.attendees ? e.attendees.map(a => a.email) : []
+    }));
+    res.json(formatted);
   } catch (error) {
     console.error('Error getting calendar events:', error.message);
+    // Fallback to mock data
     res.json(mockEvents);
   }
 });
@@ -69,18 +73,22 @@ router.get('/week', async (req, res) => {
 // Get all upcoming events
 router.get('/upcoming', async (req, res) => {
   try {
-    // Try to use gog if available
-    try {
-      const days = req.query.days || 30;
-      const output = execSync(`gog calendar list --days ${days} --format json 2>/dev/null`, { encoding: 'utf8' });
-      const events = JSON.parse(output);
-      res.json(events);
-    } catch {
-      // Fallback to mock data
-      res.json(mockEvents);
-    }
+    const days = req.query.days || 30;
+    const output = execSync(`gog calendar events --days ${days} --json -j --results-only`, { encoding: 'utf8' });
+    const events = JSON.parse(output);
+    const formatted = events.map(e => ({
+      id: e.id,
+      title: e.summary || '(no title)',
+      start: e.start?.dateTime || e.start?.date || '',
+      end: e.end?.dateTime || e.end?.date || '',
+      description: e.description || '',
+      location: e.location || '',
+      attendees: e.attendees ? e.attendees.map(a => a.email) : []
+    }));
+    res.json(formatted);
   } catch (error) {
     console.error('Error getting upcoming events:', error.message);
+    // Fallback to mock data
     res.json(mockEvents);
   }
 });

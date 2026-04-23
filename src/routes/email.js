@@ -43,40 +43,40 @@ const mockEmails = [
 // Get unread email count
 router.get('/unread-count', async (req, res) => {
   try {
-    // Try to use gog if available
-    try {
-      const output = execSync('gog gmail list --limit 100 --format json 2>/dev/null', { encoding: 'utf8' });
-      const emails = JSON.parse(output);
-      const unreadCount = emails.filter(e => e.unread).length;
-      res.json({ unread: unreadCount, total: emails.length });
-    } catch {
-      // Fallback to mock data
-      const unreadCount = mockEmails.filter(e => e.unread).length;
-      res.json({ unread: unreadCount, total: mockEmails.length, mock: true });
-    }
+    const output = execSync('gog gmail search is:unread --json -j --results-only', { encoding: 'utf8' });
+    const data = JSON.parse(output);
+    const threads = Array.isArray(data) ? data : (data.threads || []);
+    res.json({ unread: threads.length, total: threads.length });
   } catch (error) {
     console.error('Error getting email count:', error.message);
-    res.json({ unread: 0, total: 0, error: error.message });
+    // Fallback to mock data
+    const unreadCount = mockEmails.filter(e => e.unread).length;
+    res.json({ unread: unreadCount, total: mockEmails.length, mock: true });
   }
 });
 
 // Get email list
 router.get('/list', async (req, res) => {
   try {
-    // Try to use gog if available
-    try {
-      const limit = req.query.limit || 20;
-      const output = execSync(`gog gmail list --limit ${limit} --format json 2>/dev/null`, { encoding: 'utf8' });
-      const emails = JSON.parse(output);
-      res.json(emails);
-    } catch {
-      // Fallback to mock data
-      const limit = req.query.limit || 20;
-      res.json(mockEmails.slice(0, limit));
-    }
+    const limit = req.query.limit || 20;
+    const output = execSync('gog gmail search in:inbox --json -j --results-only', { encoding: 'utf8' });
+    const threads = JSON.parse(output);
+    const emailList = (Array.isArray(threads) ? threads : (threads.threads || []))
+      .slice(0, limit)
+      .map(t => ({
+        id: t.id,
+        from: t.from || 'Unknown',
+        subject: t.subject || '(no subject)',
+        date: t.date || new Date().toISOString(),
+        unread: t.labels && t.labels.includes('UNREAD'),
+        snippet: t.subject || ''
+      }));
+    res.json(emailList);
   } catch (error) {
     console.error('Error listing emails:', error.message);
-    res.json(mockEmails);
+    // Fallback to mock data
+    const limit = req.query.limit || 20;
+    res.json(mockEmails.slice(0, limit));
   }
 });
 
